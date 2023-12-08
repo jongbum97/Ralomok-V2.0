@@ -1,6 +1,5 @@
 package com.ssafy.util;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,57 +17,57 @@ import lombok.extern.slf4j.Slf4j;
 public class WebSocketHandler extends TextWebSocketHandler{
 
 	private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+	private final Map<String, String> names = new ConcurrentHashMap<>();
 	private final ObjectMapper mapper = new ObjectMapper();
 	
 	@Override
 	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
 		// 소켓 연결시 실행
-		log.debug(session.toString());
+		log.debug("연결"+session.toString());
 		sessions.put(session.getId(), session);
-		sessions.values().forEach( s -> {
-			try {
-				Message message = new Message("alert", session.getId()+"님 입장");
-				s.sendMessage(new TextMessage(mapper.writeValueAsString(message)));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		});
 	}
 
 	@Override
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 		// 데이터 통신시 실행
-		log.debug(message.getPayload());
-		sessions.values().forEach( s -> {
-			try {
-				s.sendMessage(new TextMessage(message.getPayload()));
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		});
+		Message mm = mapper.readValue(message.getPayload(), Message.class);
+		log.debug(mm.toString());
+		
+		if(mm.getName().equals("config")) {
+			names.put(session.getId(), mm.getData());
+			log.debug(names.toString());
+			sessions.values().forEach( s -> { 
+				send(s, new Message("System", names.get(session.getId())+"님이 입장했습니다.")); 
+			});
+			return;
+		}
+		sessions.values().forEach( s -> { send(s, mm); });
 	}
 
 	@Override
-	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+	public synchronized void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
 		// 연결 종료시 실행
-		log.debug(session.toString());
-		sessions.remove(session.getId());
-		sessions.values().forEach( s -> {
-			try {
-				Message message = new Message("alert", session.getId()+"님 퇴장");
-				s.sendMessage(new TextMessage(mapper.writeValueAsString(message)));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+		log.debug("연결종료"+names.get(session.getId()));
+		sessions.values().forEach( s -> { 
+			if(s.getId()!=session.getId())
+			send(s, new Message("System", names.get(session.getId())+"님이 퇴장했습니다."));
 		});
+		names.remove(session.getId());
+		sessions.remove(session.getId());
 	}
 	
 	@Override
 	public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
 		// 에러 처리
-		
+		log.error(exception.getMessage());
 	}
 
-	
+	private void send(WebSocketSession s , Message m) {
+		try {
+			s.sendMessage(new TextMessage(mapper.writeValueAsString(m)));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 	
 }

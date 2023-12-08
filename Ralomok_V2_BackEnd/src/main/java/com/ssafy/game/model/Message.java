@@ -13,7 +13,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Message implements Serializable{
 	
-	private String state;
-	private String message;
+	private String name;
+	private String data;
 	
 }
