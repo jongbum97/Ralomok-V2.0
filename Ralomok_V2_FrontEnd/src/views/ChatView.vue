@@ -23,7 +23,6 @@ watch(
   async () => {
     await setTimeout(100);
     document.querySelector("#ch").scrollTo(0, 9999);
-    console.log("down");
   },
   { deep: true }
 );

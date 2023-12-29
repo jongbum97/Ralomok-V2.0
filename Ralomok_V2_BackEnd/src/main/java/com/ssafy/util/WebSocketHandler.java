@@ -1,5 +1,9 @@
 package com.ssafy.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -10,11 +14,14 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.game.model.Message;
+import com.ssafy.word.model.WordDto;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class WebSocketHandler extends TextWebSocketHandler{
+	
+	private NaverDictionaryApi dictionary = new NaverDictionaryApi();
 
 	private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 	private final Map<String, String> names = new ConcurrentHashMap<>();
@@ -42,6 +49,17 @@ public class WebSocketHandler extends TextWebSocketHandler{
 			return;
 		}
 		sessions.values().forEach( s -> { send(s, mm); });
+		
+		String response = dictionary.searchDictionary(mm.getData());
+		Map<String, Object> map = mapper.readValue(response, Map.class);
+		log.debug(map.toString());
+		List<Object> list = (ArrayList<Object>) map.get("items");
+		log.debug(list.toString());
+		List<WordDto> words = new ArrayList<>();
+		for (Object object : list) {
+			Map<String, String> tmp = (Map<String, String>) object;
+			words.add(((WordDto) tmp));
+		}
 	}
 
 	@Override
